@@ -109,18 +109,19 @@ class TestTransactionDialog:
     def test_dialog_validation(self, qapp):
         """Test dialog validation."""
         dialog = TransactionDialog()
-        # Set to a value below minimum (spinbox will clamp, but we can test the validation logic)
-        dialog.amount_spinbox.setValue(0.001)  # Below minimum threshold
         
-        # Since spinbox minimum is 0.01, it will clamp to 0.01, so validation should pass
-        # Let's test by directly setting a lower value in the internal state
-        # Actually, the spinbox enforces minimum, so let's test with a valid value
-        dialog.amount_spinbox.setValue(0.01)  # Valid minimum value
+        # Test validation with valid amount (spinbox minimum is 0.01, so we test with valid values)
+        dialog.amount_spinbox.setValue(0.01)  # Minimum valid value
         result = dialog._validate()
-        assert result is True  # Should pass with valid amount
+        assert result is True
         
-        # Test with an amount that's too small (if we could set it)
-        # Since spinbox enforces minimum, we'll just verify the validation method exists and works
+        # Test validation with larger valid amount
+        dialog.amount_spinbox.setValue(100.0)
+        result = dialog._validate()
+        assert result is True
+        
+        # Note: We cannot test invalid values (< 0.01) because QDoubleSpinBox
+        # enforces the minimum value and prevents setting values below 0.01
         dialog.close()
 
 

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Dict, List, Optional
 from PyQt6.QtWidgets import QCalendarWidget, QWidget, QLabel
 from PyQt6.QtCore import QDate, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter, QPalette
+from PyQt6.QtGui import QColor, QPainter, QPalette, QFont
 
 from src.models.transaction import Transaction, TransactionType
 
@@ -22,6 +22,8 @@ class CalendarWidget(QCalendarWidget):
         
         # Connect selection changed signal
         self.selectionChanged.connect(self._on_selection_changed)
+        # Connect clicked signal to handle clicks even when date is already selected
+        self.clicked.connect(self._on_date_clicked)
     
     def set_transactions(self, transactions: List[Transaction]):
         """
@@ -50,16 +52,25 @@ class CalendarWidget(QCalendarWidget):
         )
         self.date_clicked.emit(transaction_date)
     
+    def _on_date_clicked(self, clicked_date: QDate):
+        """Handle date click - always fires even if already selected."""
+        transaction_date = date(
+            clicked_date.year(),
+            clicked_date.month(),
+            clicked_date.day()
+        )
+        self.date_clicked.emit(transaction_date)
+    
     def paintCell(self, painter: QPainter, rect, date: QDate):
         """
-        Paint a calendar cell with color coding for transactions.
+        Paint a calendar cell with +/- indicators for deposits and withdrawals.
         
         Args:
             painter: QPainter instance
             rect: Cell rectangle
             date: Date for the cell
         """
-        # First, call parent paint to draw the date
+        # First, call parent paint to draw the date (no background fill)
         super().paintCell(painter, rect, date)
         
         # Convert QDate to Python date
@@ -69,33 +80,25 @@ class CalendarWidget(QCalendarWidget):
         if cell_date in self.transactions_by_date:
             transactions = self.transactions_by_date[cell_date]
             
-            # Calculate net amount for the day
-            net_amount = 0.0
-            for transaction in transactions:
-                net_amount += transaction.get_signed_amount()
+            # Count deposits and withdrawals separately
+            deposit_count = sum(1 for t in transactions if t.type == TransactionType.DEPOSIT)
+            withdrawal_count = sum(1 for t in transactions if t.type == TransactionType.WITHDRAWAL)
             
-            # Color code based on net amount
-            if net_amount > 0:
-                # Green for positive (more deposits than withdrawals)
-                color = QColor(200, 255, 200, 150)  # Light green with transparency
-            elif net_amount < 0:
-                # Red for negative (more withdrawals than deposits)
-                color = QColor(255, 200, 200, 150)  # Light red with transparency
-            else:
-                # Neutral for zero
-                color = QColor(240, 240, 240, 100)  # Light gray with transparency
+            # Set up font for indicators (slightly bold and larger)
+            font = painter.font()
+            font.setBold(True)
+            font.setPointSize(font.pointSize() + 1)
+            painter.setFont(font)
             
-            # Draw background color
-            painter.fillRect(rect, color)
+            # Draw "+" indicator for deposits in top-right
+            if deposit_count > 0:
+                painter.setPen(QColor(0, 150, 0))  # Green
+                plus_rect = rect.adjusted(rect.width() - 15, 2, -2, rect.height() // 2)
+                painter.drawText(plus_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, "+")
             
-            # Redraw the date text on top
-            painter.setPen(self.palette().color(QPalette.ColorRole.Text))
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(date.day()))
-            
-            # Draw indicator dot if there are transactions
-            if transactions:
-                dot_rect = rect.adjusted(rect.width() - 8, 2, -2, rect.height() - 6)
-                painter.setBrush(QColor(0, 0, 0, 180))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(dot_rect)
+            # Draw "-" indicator for withdrawals in bottom-right
+            if withdrawal_count > 0:
+                painter.setPen(QColor(200, 0, 0))  # Red
+                minus_rect = rect.adjusted(rect.width() - 15, rect.height() // 2, -2, rect.height() - 2)
+                painter.drawText(minus_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom, "-")
 
