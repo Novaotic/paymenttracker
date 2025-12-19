@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Dict, List, Optional
 from PyQt6.QtWidgets import QCalendarWidget, QWidget, QLabel
-from PyQt6.QtCore import QDate, Qt, pyqtSignal
+from PyQt6.QtCore import QDate, QPoint, Qt, pyqtSignal, QRect
 from PyQt6.QtGui import QColor, QPainter, QPalette, QFont
 
 from src.models.transaction import Transaction, TransactionType
@@ -20,9 +20,7 @@ class CalendarWidget(QCalendarWidget):
         self.transactions_by_date: Dict[date, List[Transaction]] = {}
         self.setGridVisible(True)
         
-        # Connect selection changed signal
-        self.selectionChanged.connect(self._on_selection_changed)
-        # Connect clicked signal to handle clicks even when date is already selected
+
         self.clicked.connect(self._on_date_clicked)
     
     def set_transactions(self, transactions: List[Transaction]):
@@ -42,16 +40,6 @@ class CalendarWidget(QCalendarWidget):
         # Force repaint
         self.updateCells()
     
-    def _on_selection_changed(self):
-        """Handle calendar date selection."""
-        selected_date = self.selectedDate()
-        transaction_date = date(
-            selected_date.year(),
-            selected_date.month(),
-            selected_date.day()
-        )
-        self.date_clicked.emit(transaction_date)
-    
     def _on_date_clicked(self, clicked_date: QDate):
         """Handle date click - always fires even if already selected."""
         transaction_date = date(
@@ -63,42 +51,51 @@ class CalendarWidget(QCalendarWidget):
     
     def paintCell(self, painter: QPainter, rect, date: QDate):
         """
-        Paint a calendar cell with +/- indicators for deposits and withdrawals.
+        Paint a calendar cell with deposits and withdrawals.
+        Then call the drawIndicators method to draw dot indicators for deposits and withdrawals.
         
-        Args:
-            painter: QPainter instance
-            rect: Cell rectangle
-            date: Date for the cell
         """
-        # First, call parent paint to draw the date (no background fill)
+
         super().paintCell(painter, rect, date)
         
-        # Convert QDate to Python date
+        self.drawIndicators(painter, rect, date)
+
+    def drawIndicators(self, painter: QPainter, rect: QRect, date: QDate):
+        """
+        Draw dot indicators for deposits and withdrawals.
+        """
         cell_date = date.toPyDate()
+        if cell_date not in self.transactions_by_date:
+            return
         
-        # Check if there are transactions for this date
-        if cell_date in self.transactions_by_date:
-            transactions = self.transactions_by_date[cell_date]
-            
-            # Count deposits and withdrawals separately
-            deposit_count = sum(1 for t in transactions if t.type == TransactionType.DEPOSIT)
-            withdrawal_count = sum(1 for t in transactions if t.type == TransactionType.WITHDRAWAL)
-            
-            # Set up font for indicators (slightly bold and larger)
-            font = painter.font()
-            font.setBold(True)
-            font.setPointSize(font.pointSize() + 1)
-            painter.setFont(font)
-            
-            # Draw "+" indicator for deposits in top-right
-            if deposit_count > 0:
-                painter.setPen(QColor(0, 150, 0))  # Green
-                plus_rect = rect.adjusted(rect.width() - 15, 2, -2, rect.height() // 2)
-                painter.drawText(plus_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, "+")
-            
-            # Draw "-" indicator for withdrawals in bottom-right
-            if withdrawal_count > 0:
-                painter.setPen(QColor(200, 0, 0))  # Red
-                minus_rect = rect.adjusted(rect.width() - 15, rect.height() // 2, -2, rect.height() - 2)
-                painter.drawText(minus_rect, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom, "-")
+        transactions = self.transactions_by_date[cell_date]
+        has_deposit = any(t.type == TransactionType.DEPOSIT for t in transactions)
+        has_withdrawal = any(t.type == TransactionType.WITHDRAWAL for t in transactions)
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        radius = 3  # dot size
+        margin = 3  # distance from edges
+
+        # Anchors
+        right_x = rect.right() - radius - margin
+        top_y = rect.top() + radius + margin
+        bottom_y = rect.bottom() - radius - margin
+
+        # Top-right: deposit
+        if has_deposit:
+            painter.setBrush(QColor(0, 150, 0))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(QPoint(right_x, top_y), radius, radius)
+
+        # Bottom-right: withdrawal
+        if has_withdrawal:
+            painter.setBrush(QColor(200, 0, 0))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(QPoint(right_x, bottom_y), radius, radius)
+
+        painter.restore()
+        
+
 
