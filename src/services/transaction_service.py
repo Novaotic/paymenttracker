@@ -371,4 +371,62 @@ class TransactionService:
                 break
         
         return weekly_balances
+    
+    @staticmethod
+    def filter_transactions(
+        transactions: List[Transaction],
+        text_search: str = "",
+        transaction_type: Optional[TransactionType] = None,
+        min_amount: Optional[float] = None,
+        max_amount: Optional[float] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> List[Transaction]:
+        """
+        Filter a list of transactions by various criteria.
+        
+        Args:
+            transactions: List of transactions to filter
+            text_search: Search text (searches in description, category, payee - case-insensitive)
+            transaction_type: Filter by transaction type (None for all types)
+            min_amount: Minimum amount (None for no minimum)
+            max_amount: Maximum amount (None for no maximum)
+            start_date: Start date for filtering (None for no start limit)
+            end_date: End date for filtering (None for no end limit)
+            
+        Returns:
+            Filtered list of transactions
+        """
+        filtered = transactions
+        
+        # Text search (description, category, payee)
+        if text_search:
+            text_lower = text_search.lower()
+            filtered = [
+                t for t in filtered
+                if text_lower in t.description.lower()
+                or text_lower in t.category.lower()
+                or text_lower in t.payee.lower()
+            ]
+        
+        # Transaction type filter
+        if transaction_type is not None:
+            filtered = [t for t in filtered if t.type == transaction_type]
+        
+        # Amount range filter
+        if min_amount is not None:
+            filtered = [t for t in filtered if t.amount >= min_amount]
+        if max_amount is not None:
+            filtered = [t for t in filtered if t.amount <= max_amount]
+        
+        # Date range filter (only apply if dates are provided)
+        # Note: We always get dates from the widget, so we need to handle the case
+        # where dates are set to default values but user hasn't actively filtered
+        # For now, apply the filters if dates are provided
+        if start_date is not None:
+            filtered = [t for t in filtered if t.date >= start_date]
+        if end_date is not None:
+            filtered = [t for t in filtered if t.date <= end_date]
+        
+        return filtered
 

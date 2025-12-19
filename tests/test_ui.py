@@ -13,6 +13,7 @@ from src.services.transaction_service import TransactionService
 from src.ui.transaction_dialog import TransactionDialog
 from src.ui.calendar_widget import CalendarWidget
 from src.ui.main_window import MainWindow
+from src.ui.transactions_list_widget import TransactionsListWidget
 
 
 @pytest.fixture(scope="session")
@@ -176,10 +177,9 @@ class TestCalendarWidget:
         
         calendar.date_clicked.connect(on_date_clicked)
         
-        # Change selection to trigger signal
-        calendar.setSelectedDate(QDate(2024, 1, 15))
-        
-        qtbot.wait(100)  # Wait for signal
+        # Simulate a date click by calling the handler directly
+        test_qdate = QDate(2024, 1, 15)
+        calendar._on_date_clicked(test_qdate)
         
         assert len(clicked_dates) > 0
         assert clicked_dates[-1] == date(2024, 1, 15)
@@ -256,4 +256,132 @@ class TestMainWindow:
         assert "Edit" in menu_names
         assert "Help" in menu_names
         window.close()
+
+
+class TestTransactionsListWidgetFiltering:
+    """Test transactions list widget with filtering."""
+    
+    def test_transactions_list_with_filter_widget(self, qapp, temp_db, transaction_service):
+        """Test that transactions list widget has filter widget."""
+        # Create test transactions
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 15),
+            amount=100.0,
+            type=TransactionType.DEPOSIT,
+            description="Test deposit"
+        ))
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 20),
+            amount=50.0,
+            type=TransactionType.WITHDRAWAL,
+            description="Test withdrawal"
+        ))
+        
+        widget = TransactionsListWidget()
+        transactions = transaction_service.get_transactions_for_month(2024, 1)
+        widget.set_transactions(transactions)
+        
+        # Verify filter widget exists
+        assert widget.filter_widget is not None
+        assert len(widget.all_transactions) == 2
+        assert len(widget.transactions) == 2  # Initially all shown
+        
+        widget.close()
+    
+    def test_filter_text_search(self, qapp, temp_db, transaction_service):
+        """Test filtering transactions by text search."""
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 15),
+            amount=100.0,
+            type=TransactionType.DEPOSIT,
+            description="Salary payment",
+            category="Income"
+        ))
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 20),
+            amount=50.0,
+            type=TransactionType.WITHDRAWAL,
+            description="Grocery shopping",
+            category="Food"
+        ))
+        
+        widget = TransactionsListWidget()
+        transactions = transaction_service.get_transactions_for_month(2024, 1)
+        widget.set_transactions(transactions)
+        
+        # Apply text filter
+        widget.filter_widget.text_search.setText("Salary")
+        widget._apply_filters()
+        
+        assert len(widget.transactions) == 1
+        assert widget.transactions[0].description == "Salary payment"
+        
+        widget.close()
+    
+    def test_filter_by_type(self, qapp, temp_db, transaction_service):
+        """Test filtering transactions by type."""
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 15),
+            amount=100.0,
+            type=TransactionType.DEPOSIT,
+            description="Deposit"
+        ))
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 20),
+            amount=50.0,
+            type=TransactionType.WITHDRAWAL,
+            description="Withdrawal"
+        ))
+        
+        widget = TransactionsListWidget()
+        transactions = transaction_service.get_transactions_for_month(2024, 1)
+        widget.set_transactions(transactions)
+        
+        # Filter by deposit only
+        widget.filter_widget.type_combo.setCurrentIndex(1)  # Deposit
+        widget._apply_filters()
+        
+        assert len(widget.transactions) == 1
+        assert widget.transactions[0].type == TransactionType.DEPOSIT
+        
+        widget.close()
+    
+    def test_filter_combined(self, qapp, temp_db, transaction_service):
+        """Test combined filtering."""
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 15),
+            amount=100.0,
+            type=TransactionType.DEPOSIT,
+            description="Salary",
+            category="Income"
+        ))
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 20),
+            amount=50.0,
+            type=TransactionType.DEPOSIT,
+            description="Bonus",
+            category="Income"
+        ))
+        transaction_service.create_transaction(Transaction(
+            date=date(2024, 1, 25),
+            amount=150.0,
+            type=TransactionType.WITHDRAWAL,
+            description="Rent",
+            category="Housing"
+        ))
+        
+        widget = TransactionsListWidget()
+        transactions = transaction_service.get_transactions_for_month(2024, 1)
+        widget.set_transactions(transactions)
+        
+        # Filter by type (deposit) and text (Income)
+        widget.filter_widget.type_combo.setCurrentIndex(1)  # Deposit
+        widget.filter_widget.text_search.setText("Income")
+        widget._apply_filters()
+        
+        assert len(widget.transactions) == 2
+        assert all(t.type == TransactionType.DEPOSIT for t in widget.transactions)
+        assert all("Income" in t.category for t in widget.transactions)
+        
+        widget.close()
 

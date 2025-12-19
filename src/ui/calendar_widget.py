@@ -1,16 +1,16 @@
-"""Custom calendar widget with transaction indicators and color coding."""
+"""Custom calendar widget with transaction indicators."""
 
-from datetime import date, datetime
-from typing import Dict, List, Optional
-from PyQt6.QtWidgets import QCalendarWidget, QWidget, QLabel
+from datetime import date
+from typing import Dict, List
+from PyQt6.QtWidgets import QCalendarWidget
 from PyQt6.QtCore import QDate, QPoint, Qt, pyqtSignal, QRect
-from PyQt6.QtGui import QColor, QPainter, QPalette, QFont
+from PyQt6.QtGui import QColor, QPainter
 
 from src.models.transaction import Transaction, TransactionType
 
 
 class CalendarWidget(QCalendarWidget):
-    """Calendar widget with transaction color coding."""
+    """Calendar widget with dot indicators for deposits and withdrawals."""
     
     date_clicked = pyqtSignal(date)  # Signal emitted when a date is clicked
     
@@ -19,8 +19,6 @@ class CalendarWidget(QCalendarWidget):
         super().__init__(parent)
         self.transactions_by_date: Dict[date, List[Transaction]] = {}
         self.setGridVisible(True)
-        
-
         self.clicked.connect(self._on_date_clicked)
     
     def set_transactions(self, transactions: List[Transaction]):
@@ -51,18 +49,24 @@ class CalendarWidget(QCalendarWidget):
     
     def paintCell(self, painter: QPainter, rect, date: QDate):
         """
-        Paint a calendar cell with deposits and withdrawals.
-        Then call the drawIndicators method to draw dot indicators for deposits and withdrawals.
+        Paint a calendar cell and draw transaction indicators.
         
+        Args:
+            painter: QPainter instance
+            rect: Cell rectangle
+            date: Date for the cell
         """
-
         super().paintCell(painter, rect, date)
-        
         self.drawIndicators(painter, rect, date)
 
     def drawIndicators(self, painter: QPainter, rect: QRect, date: QDate):
         """
         Draw dot indicators for deposits and withdrawals.
+        
+        Args:
+            painter: QPainter instance
+            rect: Cell rectangle
+            date: Date for the cell
         """
         cell_date = date.toPyDate()
         if cell_date not in self.transactions_by_date:
@@ -96,6 +100,3 @@ class CalendarWidget(QCalendarWidget):
             painter.drawEllipse(QPoint(right_x, bottom_y), radius, radius)
 
         painter.restore()
-        
-
-

@@ -9,6 +9,8 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 
 from src.models.transaction import Transaction, TransactionType
+from src.services.transaction_service import TransactionService
+from src.ui.transaction_filter_widget import TransactionFilterWidget
 
 
 class TransactionsListWidget(QWidget):
@@ -20,7 +22,8 @@ class TransactionsListWidget(QWidget):
     def __init__(self, parent=None):
         """Initialize transactions list widget."""
         super().__init__(parent)
-        self.transactions: List[Transaction] = []
+        self.all_transactions: List[Transaction] = []  # Store all transactions
+        self.transactions: List[Transaction] = []  # Displayed (filtered) transactions
         self._setup_ui()
     
     def _setup_ui(self):
@@ -31,6 +34,11 @@ class TransactionsListWidget(QWidget):
         title = QLabel("Transactions")
         title.setStyleSheet("font-weight: bold; font-size: 14pt;")
         layout.addWidget(title)
+        
+        # Filter widget
+        self.filter_widget = TransactionFilterWidget()
+        self.filter_widget.filter_changed.connect(self._apply_filters)
+        layout.addWidget(self.filter_widget)
         
         # Table for transactions
         self.table = QTableWidget()
@@ -68,7 +76,30 @@ class TransactionsListWidget(QWidget):
         Args:
             transactions: List of transactions to display
         """
-        self.transactions = sorted(transactions, key=lambda t: (t.date, t.id or 0))
+        # Store all transactions and apply current filters
+        self.all_transactions = sorted(transactions, key=lambda t: (t.date, t.id or 0))
+        self._apply_filters()
+    
+    def _apply_filters(self):
+        """Apply current filters to the transaction list."""
+        # Get filter values from filter widget
+        text_search = self.filter_widget.get_text_search()
+        transaction_type = self.filter_widget.get_transaction_type()
+        min_amount, max_amount = self.filter_widget.get_amount_range()
+        start_date, end_date = self.filter_widget.get_date_range()
+        
+        # Apply filters using transaction service method
+        self.transactions = TransactionService.filter_transactions(
+            self.all_transactions,
+            text_search=text_search,
+            transaction_type=transaction_type,
+            min_amount=min_amount,
+            max_amount=max_amount,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        # Update table display
         self._populate_table()
     
     def _populate_table(self):

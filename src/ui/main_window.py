@@ -1,10 +1,9 @@
 """Main application window."""
 
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date, timedelta
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMenuBar,
-    QStatusBar, QMenu, QMessageBox, QFileDialog
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QStatusBar, QMenu, QMessageBox
 )
 from PyQt6.QtCore import Qt, QDate
 
