@@ -61,6 +61,52 @@ class TransactionService:
         conn.commit()
         return transaction
     
+    def create_transactions_batch(self, transactions: List[Transaction]) -> List[Transaction]:
+        """
+        Create multiple transactions in a batch.
+        
+        Args:
+            transactions: List of transactions to create
+            
+        Returns:
+            List of successfully created transactions (with IDs set)
+        """
+        conn = self.db.connect()
+        cursor = conn.cursor()
+        
+        created_transactions = []
+        
+        for transaction in transactions:
+            try:
+                cursor.execute("""
+                    INSERT INTO transactions (
+                        date, amount, type, description, category, payee,
+                        recurring_template_id, is_template, recurrence_pattern, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    transaction.date.isoformat(),
+                    transaction.amount,
+                    transaction.type.value,
+                    transaction.description,
+                    transaction.category,
+                    transaction.payee,
+                    transaction.recurring_template_id,
+                    1 if transaction.is_template else 0,
+                    transaction.recurrence_pattern.value if transaction.recurrence_pattern else None,
+                    transaction.created_at.isoformat(),
+                ))
+                
+                transaction.id = cursor.lastrowid
+                created_transactions.append(transaction)
+            except Exception as e:
+                # Skip invalid transactions, continue with the rest
+                # Transaction validation happens in __init__, so this is for DB errors
+                print(f"Error creating transaction: {e}")
+                continue
+        
+        conn.commit()
+        return created_transactions
+    
     def get_transaction(self, transaction_id: int) -> Optional[Transaction]:
         """
         Get a transaction by ID.

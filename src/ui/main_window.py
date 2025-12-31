@@ -1,6 +1,7 @@
 """Main application window."""
 
 from datetime import date, timedelta
+from typing import Optional, List
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QStatusBar, QMenu, QMessageBox
@@ -15,6 +16,8 @@ from src.ui.calendar_widget import CalendarWidget
 from src.ui.weekly_balance_widget import WeeklyBalanceWidget
 from src.ui.transactions_list_widget import TransactionsListWidget
 from src.ui.transaction_dialog import TransactionDialog
+from src.ui.bulk_entry_dialog import BulkEntryDialog
+from src.ui.csv_import_dialog import CSVImportDialog
 
 
 class MainWindow(QMainWindow):
@@ -96,17 +99,28 @@ class MainWindow(QMainWindow):
         add_transaction_action = edit_menu.addAction("Add Transaction")
         add_transaction_action.setShortcut("Ctrl+N")
         add_transaction_action.triggered.connect(self._on_add_transaction)
+        edit_menu.addSeparator()
+        bulk_entry_action = edit_menu.addAction("Bulk Entry...")
+        bulk_entry_action.triggered.connect(self._on_bulk_entry)
+        import_csv_action = edit_menu.addAction("Import from CSV...")
+        import_csv_action.triggered.connect(self._on_import_csv)
         
         # Help menu
         help_menu = menubar.addMenu("Help")
         about_action = help_menu.addAction("About")
         about_action.triggered.connect(self._on_about)
     
-    def _load_data(self):
-        """Load transactions for the current month view."""
-        selected_date = self.calendar.selectedDate()
-        year = selected_date.year()
-        month = selected_date.month()
+    def _load_data(self, year: Optional[int] = None, month: Optional[int] = None):
+        """Load transactions for the current month view.
+        
+        Args:
+            year: Year to load (defaults to calendar's selected date year)
+            month: Month to load (defaults to calendar's selected date month)
+        """
+        if year is None or month is None:
+            selected_date = self.calendar.selectedDate()
+            year = selected_date.year()
+            month = selected_date.month()
         
         # Get transactions for the month
         transactions = self.transaction_service.get_transactions_for_month(year, month)
@@ -182,7 +196,8 @@ class MainWindow(QMainWindow):
     
     def _on_calendar_month_changed(self, year: int, month: int):
         """Handle calendar month change."""
-        self._load_data()
+        # Use the year and month from the signal to ensure we load the correct month
+        self._load_data(year=year, month=month)
     
     def _on_add_transaction(self):
         """Handle add transaction action."""
@@ -285,6 +300,62 @@ class MainWindow(QMainWindow):
         
         self._load_data()
         self.status_bar.showMessage("Transaction deleted successfully", 3000)
+    
+    def _on_bulk_entry(self):
+        """Handle bulk entry action."""
+        dialog = BulkEntryDialog(self)
+        
+        if dialog.exec():
+            transactions = dialog.get_transactions()
+            if transactions:
+                self._import_transactions(transactions)
+    
+    def _on_import_csv(self):
+        """Handle CSV import action."""
+        dialog = CSVImportDialog(self)
+        
+        if dialog.exec():
+            transactions = dialog.get_transactions()
+            if transactions:
+                self._import_transactions(transactions)
+    
+    def _import_transactions(self, transactions: List[Transaction]):
+        """Import transactions and generate recurring instances."""
+        # Separate templates and regular transactions
+        templates = [t for t in transactions if t.is_template]
+        regular_transactions = [t for t in transactions if not t.is_template]
+        
+        # Import all transactions using batch create
+        all_transactions = self.transaction_service.create_transactions_batch(transactions)
+        
+        # Generate instances for templates
+        if templates:
+            end_date = date.today() + timedelta(days=365)
+            for template in templates:
+                if template.id:  # Template was successfully created
+                    instances = self.recurrence_service.generate_instances(
+                        template,
+                        template.date,
+                        end_date,
+                        regenerate_existing=False
+                    )
+                    # Save instances
+                    if instances:
+                        self.transaction_service.create_transactions_batch(instances)
+        
+        # Refresh UI
+        self._load_data()
+        
+        # Show status message
+        total_imported = len(all_transactions)
+        if templates:
+            templates_count = len([t for t in all_transactions if t.is_template])
+            self.status_bar.showMessage(
+                f"Imported {total_imported} transactions ({templates_count} templates, {total_imported - templates_count} regular)",
+                5000
+            )
+        else:
+            self.status_bar.showMessage(f"Imported {total_imported} transactions", 5000)
     
     def _on_about(self):
         """Show about dialog."""
