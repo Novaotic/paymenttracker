@@ -14,6 +14,8 @@ A Python application for tracking payments, deposits, and withdrawals with a cal
 - **Weekly Balances**: View weekly balance summaries for the current month
 - **Balance Carryover**: Balances carry over between months automatically
 - **Search and Filter**: Filter transactions by text (description, category, payee), type, amount range, and date range
+- **Bulk Transaction Entry**: Add multiple transactions at once using the bulk entry dialog
+- **CSV Import**: Import transactions from CSV files with automatic column mapping and validation
 
 ## Requirements
 
@@ -75,6 +77,52 @@ paymenttracker/
    - Filter by amount range - click "Apply" to filter
    - Filter by date range - click "Apply" to filter
    - Click "Clear" to reset all filters
+
+## Bulk Transaction Entry
+
+The application supports two methods for adding multiple transactions at once:
+
+### Bulk Entry Dialog
+
+1. Go to **Edit > Bulk Entry...**
+2. Use the table to enter multiple transactions
+3. Click "Add Row" to add more entries
+4. Click "Remove Selected Rows" to remove entries
+5. Click "Import" to save all transactions
+
+### CSV Import
+
+1. Go to **Edit > Import from CSV...**
+2. Click "Browse..." to select your CSV file
+3. Review and adjust column mappings if needed
+4. Preview the parsed transactions
+5. Click "Import" to import all valid transactions
+
+#### CSV Format
+
+The CSV file must include the following columns:
+
+**Required Columns:**
+- `Date`: Transaction date (formats supported: `YYYY-MM-DD`, `MM/DD/YYYY`, `DD/MM/YYYY`)
+- `Amount`: Transaction amount (supports currency symbols like `$` and comma separators)
+- `Type`: Transaction type - `deposit`, `withdrawal`, `income`, `expense`, `credit`, `debit`, `in`, `out`, `+`, or `-`
+
+**Optional Columns:**
+- `Description`: Transaction description
+- `Category`: Transaction category
+- `Payee`: Payee or payer name
+- `Recurrence Pattern`: Recurrence pattern - `weekly`, `biweekly`, or `monthly` (if specified, creates a recurring transaction template)
+
+**Example CSV:**
+
+```csv
+Date,Amount,Type,Description,Category,Payee,Recurrence Pattern
+2024-01-15,1000.00,deposit,Salary,Income,Employer,monthly
+2024-01-20,50.00,withdrawal,Grocery Shopping,Food,Store,
+2024-02-01,500.00,deposit,Bonus,Income,Employer,
+```
+
+The application will automatically detect column names based on common variations (e.g., "Date", "date", "Transaction Date" are all recognized as the date column).
 
 ## License
 
