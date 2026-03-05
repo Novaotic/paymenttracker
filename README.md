@@ -1,130 +1,143 @@
 # Payment Tracker
 
-A Python application for tracking payments, deposits, and withdrawals with a calendar-based interface.
+A personal finance web application for tracking deposits, withdrawals, and recurring transactions.
+Accessible from any device on your local network — including mobile.
+
+---
 
 ## Features
 
-- **Calendar UI**: Visual calendar interface showing transactions by date
-- **Transaction Indicators**: Dot indicators show deposits (green, top-right) and withdrawals (red, bottom-right) on calendar days
-- **Transaction Management**: Add, edit, and delete transactions
-- **Multiple Transactions per Day**: Support for multiple deposits and withdrawals on the same day
-- **Transaction Types**: Support for deposits and withdrawals (autopays)
-- **Recurring Transactions**: Set up weekly, biweekly, or monthly recurring transactions
-- **Editable Recurring Instances**: Each instance of a recurring transaction can be edited independently
-- **Weekly Balances**: View weekly balance summaries for the current month
-- **Balance Carryover**: Balances carry over between months automatically
-- **Search and Filter**: Filter transactions by text (description, category, payee), type, amount range, and date range
-- **Bulk Transaction Entry**: Add multiple transactions at once using the bulk entry dialog
-- **CSV Import**: Import transactions from CSV files with automatic column mapping and validation
+- **Calendar view** — month grid with green/coral dots indicating days with deposits or withdrawals
+- **Transaction list** — searchable, filterable by type, amount, and month
+- **Add / Edit / Delete** transactions with an inline modal
+- **Recurring transactions** — weekly, biweekly, or monthly templates; instances auto-generated on startup
+- **Bulk entry** — enter multiple transactions at once in a table
+- **CSV import** — upload a CSV and map columns to fields
+- **Weekly balance summary** — per-week starting/ending balance with net change
+- **Running balance** — always visible in the top bar
 
-## Requirements
+---
 
-- Python 3.8 or higher
-- PyQt6
-- pytest (for testing)
+## Tech Stack
+
+| Layer    | Technology |
+|----------|------------|
+| Backend  | [FastAPI](https://fastapi.tiangolo.com/) + [Uvicorn](https://www.uvicorn.org/) |
+| Database | SQLite (via Python stdlib `sqlite3`) |
+| Frontend | Vanilla HTML / CSS / JavaScript (no build step) |
+
+---
 
 ## Setup
 
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
+### Requirements
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- Python 3.8+
 
-3. Run the application:
-   ```bash
-   python src/main.py
-   ```
-
-## Running Tests
+### Install dependencies
 
 ```bash
-pytest
+python -m pip install -r requirements.txt
 ```
+
+### Run
+
+```bash
+python main.py
+```
+
+The server starts on `http://0.0.0.0:8000` with hot-reload enabled.
+
+**From your PC:** open [http://localhost:8000](http://localhost:8000)
+
+**From your phone or any LAN device:** open `http://<your-pc-ip>:8000`
+
+
+---
 
 ## Project Structure
 
 ```
 paymenttracker/
 ├── src/
-│   ├── models/          # Data models and database
-│   ├── services/        # Business logic services
-│   ├── ui/              # UI components
-│   └── main.py          # Application entry point
-├── tests/               # Test suite
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
+│   ├── app.py                      # FastAPI app, routing, startup hook
+│   ├── models/
+│   │   ├── database.py             # SQLite connection + get_db() dependency
+│   │   └── transaction.py          # Transaction model + enums
+│   ├── schemas/
+│   │   └── transaction.py          # Pydantic request/response schemas
+│   ├── services/
+│   │   ├── transaction_service.py  # CRUD, balance calculations, filtering
+│   │   └── recurrence_service.py   # Recurring instance generation
+│   └── api/
+│       ├── transactions.py         # /api/transactions endpoints
+│       ├── balances.py             # /api/balances endpoints
+│       └── import_export.py        # /api/import/csv endpoint
+├── static/
+│   ├── css/style.css               # Dark navy theme (Simple Bank inspired)
+│   └── js/
+│       ├── api.js                  # fetch() wrappers
+│       ├── calendar.js             # Calendar view + day drawer
+│       ├── transactions.js         # Transaction list, modals, bulk/CSV
+│       └── app.js                  # Bootstrap, view routing, balance bar
+├── templates/
+│   └── index.html                  # Single-page HTML shell
+├── tests/
+│   ├── test_api_transactions.py    # API integration tests
+│   ├── test_api_balances.py        # Balance API tests
+│   ├── test_database.py
+│   ├── test_transaction_service.py
+│   ├── test_transaction_service_batch.py
+│   ├── test_recurrence_service.py
+│   └── test_transaction_filter.py
+├── main.py                         # Entry point
+└── requirements.txt
 ```
 
-## Usage
+---
 
-1. Click on any day in the calendar to add a transaction (you can add multiple transactions to the same day)
-2. Fill in the transaction details (amount, type, description, category, payee)
-3. Optionally set up recurring transactions (weekly, biweekly, monthly)
-4. View weekly balances in the balance section
-5. View all transactions for the selected month in the transactions list
-6. Use the filter panel above the transactions list to:
-   - Search by text (searches description, category, and payee) - updates in real-time
-   - Filter by transaction type (Deposit/Withdrawal/All) - updates in real-time
-   - Filter by amount range - click "Apply" to filter
-   - Filter by date range - click "Apply" to filter
-   - Click "Clear" to reset all filters
+## API Reference
 
-## Bulk Transaction Entry
+The interactive docs are available at [http://localhost:8000/docs](http://localhost:8000/docs) while the server is running.
 
-The application supports two methods for adding multiple transactions at once:
+### Transactions
 
-### Bulk Entry Dialog
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/transactions` | List (params: `year`, `month`, `type`, `search`, `min_amount`, `max_amount`) |
+| `POST` | `/api/transactions` | Create one |
+| `GET`  | `/api/transactions/{id}` | Get one |
+| `PUT`  | `/api/transactions/{id}` | Update |
+| `DELETE` | `/api/transactions/{id}` | Delete |
+| `POST` | `/api/transactions/batch` | Bulk create |
+| `GET`  | `/api/transactions/templates` | List recurring templates |
+| `GET`  | `/api/transactions/templates/{id}/instances` | List instances of a template |
 
-1. Go to **Edit > Bulk Entry...**
-2. Use the table to enter multiple transactions
-3. Click "Add Row" to add more entries
-4. Click "Remove Selected Rows" to remove entries
-5. Click "Import" to save all transactions
+### Balances
 
-### CSV Import
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/balances/current` | Balance up to `as_of` date (defaults to today) |
+| `GET`  | `/api/balances/weekly` | Weekly breakdown for `year` + `month` |
 
-1. Go to **Edit > Import from CSV...**
-2. Click "Browse..." to select your CSV file
-3. Review and adjust column mappings if needed
-4. Preview the parsed transactions
-5. Click "Import" to import all valid transactions
+### Import
 
-#### CSV Format
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/import/csv` | Upload CSV file with column mapping form fields |
 
-The CSV file must include the following columns:
+---
 
-**Required Columns:**
-- `Date`: Transaction date (formats supported: `YYYY-MM-DD`, `MM/DD/YYYY`, `DD/MM/YYYY`)
-- `Amount`: Transaction amount (supports currency symbols like `$` and comma separators)
-- `Type`: Transaction type - `deposit`, `withdrawal`, `income`, `expense`, `credit`, `debit`, `in`, `out`, `+`, or `-`
+## Running Tests
 
-**Optional Columns:**
-- `Description`: Transaction description
-- `Category`: Transaction category
-- `Payee`: Payee or payer name
-- `Recurrence Pattern`: Recurrence pattern - `weekly`, `biweekly`, or `monthly` (if specified, creates a recurring transaction template)
-
-**Example CSV:**
-
-```csv
-Date,Amount,Type,Description,Category,Payee,Recurrence Pattern
-2024-01-15,1000.00,deposit,Salary,Income,Employer,monthly
-2024-01-20,50.00,withdrawal,Grocery Shopping,Food,Store,
-2024-02-01,500.00,deposit,Bonus,Income,Employer,
+```bash
+python -m pytest tests/ -v
 ```
 
-The application will automatically detect column names based on common variations (e.g., "Date", "date", "Transaction Date" are all recognized as the date column).
+---
 
-## License
+## Database
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
+The SQLite database is stored at `paymenttracker.db` in the project root. It is created automatically on first run.
+The schema uses a single `transactions` table; recurring templates and their generated instances both live in this table,
+linked by `recurring_template_id`.

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Tracker</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- ====================== TOP BAR ====================== -->
+  <header class="top-bar">
+    <span class="app-title">Payment Tracker</span>
+    <div class="balance-pill" id="balance-pill">
+      <span class="balance-label">Balance</span>
+      <span class="balance-amount" id="top-balance">—</span>
+    </div>
+  </header>
+
+  <!-- ====================== MAIN CONTENT ====================== -->
+  <main class="app-main">
+
+    <!-- ---- CALENDAR VIEW ---- -->
+    <section class="view active" id="view-calendar">
+      <div class="cal-col">
+        <div class="view-header">
+          <button class="icon-btn" id="cal-prev" aria-label="Previous month">&#8249;</button>
+          <h2 class="month-label" id="cal-month-label">Month Year</h2>
+          <button class="icon-btn" id="cal-next" aria-label="Next month">&#8250;</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Day headers -->
+          <div class="cal-dow">Sun</div>
+          <div class="cal-dow">Mon</div>
+          <div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div>
+          <div class="cal-dow">Thu</div>
+          <div class="cal-dow">Fri</div>
+          <div class="cal-dow">Sat</div>
+          <!-- Day cells injected by calendar.js -->
+        </div>
+      </div>
+
+      <!-- Day detail drawer -->
+      <div class="day-drawer" id="day-drawer" hidden>
+        <div class="day-drawer-header">
+          <span class="day-drawer-date" id="day-drawer-date"></span>
+          <button class="icon-btn" id="day-drawer-close" aria-label="Close">&#x2715;</button>
+        </div>
+        <ul class="tx-list" id="day-drawer-list"></ul>
+        <button class="btn-primary full-width" id="day-drawer-add">+ Add Transaction</button>
+      </div>
+    </section>
+
+    <!-- ---- TRANSACTIONS VIEW ---- -->
+    <section class="view" id="view-transactions">
+      <div class="view-header">
+        <h2>Transactions</h2>
+        <button class="btn-primary" id="tx-add-btn">+ Add</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <input class="filter-input" type="search" id="tx-search" placeholder="Search…" />
+        <select class="filter-select" id="tx-type-filter">
+          <option value="">All types</option>
+          <option value="deposit">Deposits</option>
+          <option value="withdrawal">Withdrawals</option>
+        </select>
+        <div class="filter-row">
+          <input class="filter-input half" type="number" id="tx-min" placeholder="Min $" step="0.01" min="0" />
+          <input class="filter-input half" type="number" id="tx-max" placeholder="Max $" step="0.01" min="0" />
+        </div>
+        <div class="filter-row">
+          <input class="filter-input half" type="month" id="tx-month-filter" />
+          <button class="btn-secondary half" id="tx-filter-clear">Clear</button>
+        </div>
+      </div>
+
+      <!-- Bulk / CSV actions -->
+      <div class="action-bar">
+        <button class="btn-ghost" id="tx-bulk-btn">Bulk Entry</button>
+        <button class="btn-ghost" id="tx-csv-btn">Import CSV</button>
+      </div>
+
+      <ul class="tx-list" id="tx-list">
+        <li class="tx-empty">Loading…</li>
+      </ul>
+    </section>
+
+    <!-- ---- BALANCES VIEW ---- -->
+    <section class="view" id="view-balances">
+      <div class="view-header">
+        <button class="icon-btn" id="bal-prev" aria-label="Previous month">&#8249;</button>
+        <h2 class="month-label" id="bal-month-label">Month Year</h2>
+        <button class="icon-btn" id="bal-next" aria-label="Next month">&#8250;</button>
+      </div>
+
+      <div class="balance-hero">
+        <span class="balance-hero-label">Current Balance</span>
+        <span class="balance-hero-amount" id="balance-hero-amount">—</span>
+      </div>
+
+      <table class="weekly-table" id="weekly-table">
+        <thead>
+          <tr>
+            <th>Week</th>
+            <th class="num-col">Start</th>
+            <th class="num-col">End</th>
+            <th class="num-col">Net</th>
+          </tr>
+        </thead>
+        <tbody id="weekly-tbody"></tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <!-- ====================== BOTTOM NAV ====================== -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span>Calendar</span>
+    </button>
+    <button class="nav-btn" data-view="transactions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+        <line x1="8" y1="18" x2="21" y2="18"/>
+        <circle cx="3" cy="6" r="1.5"/><circle cx="3" cy="12" r="1.5"/><circle cx="3" cy="18" r="1.5"/>
+      </svg>
+      <span>Transactions</span>
+    </button>
+    <button class="nav-btn" data-view="balances">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+        <polyline points="17 6 23 6 23 12"/>
+      </svg>
+      <span>Balances</span>
+    </button>
+  </nav>
+
+  <!-- ====================== MODALS ====================== -->
+
+  <!-- Transaction add/edit modal -->
+  <div class="modal-backdrop" id="tx-modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tx-modal-title">
+      <div class="modal-header">
+        <h3 id="tx-modal-title">Add Transaction</h3>
+        <button class="icon-btn" id="tx-modal-close" aria-label="Close">&#x2715;</button>
+      </div>
+      <form id="tx-form" class="modal-body" novalidate>
+        <input type="hidden" id="tx-id" />
+
+        <label class="field-label" for="tx-date">Date</label>
+        <input class="field-input" type="date" id="tx-date" required />
+
+        <label class="field-label" for="tx-amount">Amount</label>
+        <input class="field-input" type="number" id="tx-amount" step="0.01" min="0.01" required />
+
+        <label class="field-label" for="tx-type">Type</label>
+        <select class="field-input" id="tx-type" required>
+          <option value="deposit">Deposit</option>
+          <option value="withdrawal">Withdrawal</option>
+        </select>
+
+        <label class="field-label" for="tx-description">Description</label>
+        <input class="field-input" type="text" id="tx-description" />
+
+        <label class="field-label" for="tx-category">Category</label>
+        <input class="field-input" type="text" id="tx-category" />
+
+        <label class="field-label" for="tx-payee">Payee</label>
+        <input class="field-input" type="text" id="tx-payee" />
+
+        <label class="field-label" for="tx-recurrence">Recurrence</label>
+        <select class="field-input" id="tx-recurrence">
+          <option value="">None (one-time)</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Biweekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+
+        <div id="tx-form-error" class="form-error" hidden></div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" id="tx-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="tx-modal-save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bulk entry modal -->
+  <div class="modal-backdrop" id="bulk-modal-backdrop" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="bulk-modal-title">
+      <div class="modal-header">
+        <h3 id="bulk-modal-title">Bulk Entry</h3>
+        <button class="icon-btn" id="bulk-modal-close" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <div class="bulk-table-wrap">
+          <table class="bulk-table" id="bulk-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Amount</th><th>Type</th>
+                <th>Description</th><th>Category</th><th>Payee</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="bulk-tbody"></tbody>
+          </table>
+        </div>
+        <button class="btn-ghost" id="bulk-add-row">+ Add Row</button>
+        <div id="bulk-form-error" class="form-error" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="bulk-modal-cancel">Cancel</button>
+        <button class="btn-primary" id="bulk-modal-save">Import All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV import modal -->
+  <div class="modal-backdrop" id="csv-modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="csv-modal-title">
+      <div class="modal-header">
+        <h3 id="csv-modal-title">Import CSV</h3>
+        <button class="icon-btn" id="csv-modal-close" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="modal-body" id="csv-modal-body">
+        <label class="field-label">CSV File</label>
+        <input class="field-input" type="file" id="csv-file" accept=".csv,text/csv" />
+
+        <div id="csv-column-map" hidden>
+          <p class="field-hint">Map CSV columns to fields:</p>
+          <div class="csv-map-grid" id="csv-map-grid"></div>
+        </div>
+
+        <div id="csv-preview" hidden>
+          <p class="field-hint">Preview (first 5 rows):</p>
+          <div class="csv-preview-scroll">
+            <table class="bulk-table" id="csv-preview-table"></table>
+          </div>
+        </div>
+
+        <div id="csv-result" class="form-success" hidden></div>
+        <div id="csv-error" class="form-error" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="csv-modal-cancel">Cancel</button>
+        <button class="btn-primary" id="csv-modal-import" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== SCRIPTS ====================== -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/calendar.js"></script>
+  <script src="/static/js/transactions.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

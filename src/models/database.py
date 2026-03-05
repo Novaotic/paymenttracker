@@ -1,9 +1,8 @@
 """SQLite database connection and schema management."""
 
 import sqlite3
-import os
 from pathlib import Path
-from typing import Optional
+from typing import Generator, Optional
 
 
 class Database:
@@ -86,4 +85,29 @@ class Database:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+
+
+# ---------------------------------------------------------------------------
+# Module-level singleton used by the FastAPI app
+# ---------------------------------------------------------------------------
+
+_db: Optional[Database] = None
+
+
+def get_database() -> Database:
+    """Return the module-level Database singleton, creating it if needed."""
+    global _db
+    if _db is None:
+        _db = Database()
+    return _db
+
+
+def get_db() -> Generator[Database, None, None]:
+    """FastAPI dependency that yields the shared Database instance."""
+    db = get_database()
+    db.connect()
+    try:
+        yield db
+    finally:
+        pass  # Connection is shared; it stays open for the lifetime of the app
 
